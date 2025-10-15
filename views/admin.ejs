@@ -4,66 +4,300 @@
     <meta charset="UTF-8">
     <title>Painel de Administração</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 2em; background-color: #f5f5f5; color: #333; }
-        h1, h2 { color: #0056b3; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1em; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        th, td { border: 1px solid #ddd; padding: 0.8em; text-align: left; }
-        th { background-color: #0056b3; color: white; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        a { color: #007bff; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .container { max-width: 900px; margin: auto; }
-        .form-container { background-color: #fff; padding: 2em; border: 1px solid #ddd; margin-top: 2em; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 5px; }
-        input[type="text"] { width: calc(100% - 22px); padding: 10px; margin-bottom: 1em; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 10px 15px; background-color: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; font-size: 1em; }
-        button:hover { background-color: #218838; }
+        :root {
+            color-scheme: light;
+            --bg-gradient: linear-gradient(135deg, #0f73ff 0%, #5bd1b7 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-shadow: 0 20px 45px -20px rgba(15, 115, 255, 0.45);
+            --border-radius-lg: 24px;
+            --border-radius-sm: 14px;
+            --text-primary: #0d1c2e;
+            --text-secondary: #5f7082;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(1.5rem, 2vw + 1rem, 3rem);
+        }
+
+        .dashboard {
+            width: min(1100px, 100%);
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: clamp(1.5rem, 2vw, 2.5rem);
+        }
+
+        header {
+            background: var(--card-bg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--card-shadow);
+            padding: clamp(2rem, 3vw, 3rem);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: clamp(1.75rem, 2.2vw, 2.4rem);
+            font-weight: 700;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--card-shadow);
+            padding: clamp(1.75rem, 2.5vw, 2.75rem);
+        }
+
+        .panel h2 {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .panel h2 span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            background: rgba(15, 115, 255, 0.12);
+            color: #0f73ff;
+            font-size: 1.2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.75rem;
+            border-radius: var(--border-radius-sm);
+            overflow: hidden;
+        }
+
+        thead {
+            background: rgba(15, 115, 255, 0.12);
+        }
+
+        th,
+        td {
+            padding: 1rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(15, 28, 46, 0.08);
+        }
+
+        th {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr {
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background-color: rgba(15, 115, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .action-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 0.9rem;
+            border-radius: 999px;
+            background: rgba(15, 115, 255, 0.1);
+            color: #0f73ff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .action-link:hover {
+            background-color: rgba(15, 115, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .action-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 1.5rem;
+            margin-top: 1.75rem;
+        }
+
+        label {
+            font-weight: 500;
+            display: inline-block;
+            margin-bottom: 0.55rem;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border: 1px solid rgba(15, 28, 46, 0.12);
+            border-radius: var(--border-radius-sm);
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #0f73ff;
+            box-shadow: 0 0 0 4px rgba(15, 115, 255, 0.15);
+        }
+
+        button {
+            justify-self: start;
+            padding: 0.95rem 2.4rem;
+            border-radius: 999px;
+            border: none;
+            background: #0f73ff;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 15px 35px -20px rgba(15, 115, 255, 0.7);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        button:hover {
+            background: #0958c8;
+            transform: translateY(-2px);
+            box-shadow: 0 18px 45px -20px rgba(9, 88, 200, 0.75);
+        }
+
+        @media (max-width: 720px) {
+            header,
+            .panel {
+                padding: 1.5rem;
+            }
+
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            th,
+            td {
+                white-space: nowrap;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header {
+                text-align: center;
+                justify-content: center;
+            }
+
+            button {
+                width: 100%;
+                justify-self: stretch;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Painel de Gerenciamento</h1>
+    <main class="dashboard">
+        <header>
+            <div>
+                <h1>Painel de Gerenciamento</h1>
+                <p>Acompanhe os cadastros e faça o download dos QR Codes dos participantes.</p>
+            </div>
+        </header>
 
-        <h2>Alunos Cadastrados</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome Completo</th>
-                    <th>Matrícula</th>
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (alunos.length > 0) { %>
-                    <% alunos.forEach(aluno => { %>
-                        <tr>
-                            <td><%= aluno.nome_completo %></td>
-                            <td><%= aluno.matricula %></td>
-                            <td>
-                                <a href="/gerar/admin/qrcode/<%= aluno.uuid %>" title="Baixar QR Code">Baixar QR Code</a>
-                            </td>
-                        </tr>
-                    <% }) %>
-                <% } else { %>
+        <section class="panel" aria-labelledby="alunos">
+            <h2 id="alunos"><span>👩‍🎓</span> Alunos cadastrados</h2>
+            <table role="grid">
+                <thead>
                     <tr>
-                        <td colspan="3" style="text-align: center;">Nenhum aluno cadastrado.</td>
+                        <th scope="col">Nome completo</th>
+                        <th scope="col">Matrícula</th>
+                        <th scope="col">Ações</th>
                     </tr>
-                <% } %>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <% if (alunos.length > 0) { %>
+                        <% alunos.forEach(aluno => { %>
+                            <tr>
+                                <td><%= aluno.nome_completo %></td>
+                                <td><%= aluno.matricula %></td>
+                                <td>
+                                    <a class="action-link" href="/gerar/admin/qrcode/<%= aluno.uuid %>" title="Baixar QR Code">
+                                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M9 14l3 3 3-3" />
+                                            <path d="M12 11v6" />
+                                            <path d="M5 12a7 7 0 0114 0" />
+                                        </svg>
+                                        Baixar QR Code
+                                    </a>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td class="empty-state" colspan="3">Nenhum aluno cadastrado até o momento.</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </section>
 
-        <div class="form-container">
-            <h2>Cadastrar Novo Aluno</h2>
-            <form action="/gerar/admin/cadastrar" method="POST">
-                <label for="nome">Nome Completo:</label><br>
-                <input type="text" id="nome" name="nome" required><br><br>
-                
-                <label for="matricula">Matrícula:</label><br>
-                <input type="text" id="matricula" name="matricula" required><br><br>
-                
-                <button type="submit">Cadastrar Aluno</button>
+        <section class="panel" aria-labelledby="cadastro">
+            <h2 id="cadastro"><span>📝</span> Cadastrar novo aluno</h2>
+            <form class="form-grid" action="/gerar/admin/cadastrar" method="POST">
+                <label for="nome">Nome completo</label>
+                <input type="text" id="nome" name="nome" placeholder="Digite o nome completo" required>
+
+                <label for="matricula">Matrícula</label>
+                <input type="text" id="matricula" name="matricula" placeholder="Informe a matrícula" required>
+
+                <button type="submit">Cadastrar aluno</button>
             </form>
-        </div>
-    </div>
+        </section>
+    </main>
 </body>
 </html>
