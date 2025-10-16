@@ -38,6 +38,22 @@ function formatDate(isoString) {
     }
 }
 
+function normalizarRegistro(registro) {
+    const entrada = registro.entrada_confirmada_em || registro.confirmado_em || null;
+    const saida = registro.saida_confirmada_em || null;
+
+    const normalizado = {
+        uuid: registro.uuid,
+        nome: registro.nome,
+        matricula: registro.matricula,
+        slug: registro.slug,
+        entrada_confirmada_em: entrada ? formatDate(entrada) : null,
+        saida_confirmada_em: saida ? formatDate(saida) : null,
+    };
+
+    return normalizado;
+}
+
 function buildAlunoResponse(aluno, registrosMap) {
     const registro = registrosMap.get(aluno.uuid);
 
@@ -48,8 +64,27 @@ function buildAlunoResponse(aluno, registrosMap) {
         matricula: aluno.matricula,
         criado_em: aluno.criado_em,
         presenca: {
-            confirmado: Boolean(registro),
-            confirmado_em: formatDate(registro?.confirmado_em ?? null),
+            entrada: {
+                confirmado: Boolean(registro?.entrada_confirmada_em),
+                confirmado_em: registro?.entrada_confirmada_em ?? null,
+            },
+            saida: {
+                confirmado: Boolean(registro?.saida_confirmada_em),
+                confirmado_em: registro?.saida_confirmada_em ?? null,
+            },
+        },
+    };
+}
+
+function buildPresencaStatus(registro) {
+    return {
+        entrada: {
+            confirmado: Boolean(registro?.entrada_confirmada_em),
+            confirmado_em: registro?.entrada_confirmada_em ?? null,
+        },
+        saida: {
+            confirmado: Boolean(registro?.saida_confirmada_em),
+            confirmado_em: registro?.saida_confirmada_em ?? null,
         },
     };
 }
@@ -67,16 +102,17 @@ function generateSlug(existingSlugs) {
 async function readDatabase() {
     const data = await db.readDB();
     const alunos = Array.isArray(data.alunos) ? data.alunos : [];
-    const registros = Array.isArray(data.registros) ? data.registros : [];
+    const registrosOriginais = Array.isArray(data.registros) ? data.registros : [];
 
     data.alunos = alunos;
-    data.registros = registros;
+    data.registros = registrosOriginais;
 
     const existingSlugs = new Set(
         alunos.filter((aluno) => typeof aluno.slug === 'string' && aluno.slug.trim() !== '').map((aluno) => aluno.slug)
     );
 
     let shouldPersist = false;
+    let registrosAtualizados = false;
 
     for (const aluno of alunos) {
         if (!aluno.slug) {
@@ -86,7 +122,34 @@ async function readDatabase() {
         }
     }
 
-    if (shouldPersist) {
+    const registrosNormalizados = registrosOriginais.map((registro) => {
+        const normalizado = normalizarRegistro(registro);
+
+        const entradaOriginal = formatDate(registro.entrada_confirmada_em ?? registro.confirmado_em ?? null);
+        const saidaOriginal = formatDate(registro.saida_confirmada_em ?? null);
+        const estruturaDiferente =
+            !Object.prototype.hasOwnProperty.call(registro, 'entrada_confirmada_em') ||
+            Object.prototype.hasOwnProperty.call(registro, 'confirmado_em') ||
+            !Object.prototype.hasOwnProperty.call(registro, 'saida_confirmada_em');
+
+        if (
+            normalizado.entrada_confirmada_em !== entradaOriginal ||
+            normalizado.saida_confirmada_em !== saidaOriginal ||
+            estruturaDiferente
+        ) {
+            registrosAtualizados = true;
+        }
+
+        return normalizado;
+    });
+
+    if (registrosAtualizados) {
+        data.registros = registrosNormalizados;
+    } else {
+        data.registros = registrosOriginais.map((registro) => normalizarRegistro(registro));
+    }
+
+    if (shouldPersist || registrosAtualizados) {
         await db.writeDB(data);
     }
 
@@ -100,7 +163,9 @@ app.get('/', adminAuth, (req, res) => {
 app.get('/api/admin/alunos', adminAuth, async (req, res) => {
     try {
         const data = await readDatabase();
-        const registrosMap = new Map(data.registros.map((registro) => [registro.uuid, registro]));
+        const registrosMap = new Map(
+            data.registros.map((registro) => [registro.uuid, normalizarRegistro(registro)])
+        );
 
         const alunosOrdenados = [...data.alunos].sort((a, b) =>
             a.nome_completo.localeCompare(b.nome_completo, 'pt-BR')
@@ -203,15 +268,13 @@ app.get('/api/presencas/:slug', async (req, res) => {
         }
 
         const registro = data.registros.find((item) => item.uuid === aluno.uuid) ?? null;
+        const registroNormalizado = registro ? normalizarRegistro(registro) : null;
 
         res.json({
             nome_completo: aluno.nome_completo,
             matricula: aluno.matricula,
             slug: aluno.slug,
-            presenca: {
-                confirmado: Boolean(registro),
-                confirmado_em: formatDate(registro?.confirmado_em ?? null),
-            },
+            presenca: buildPresencaStatus(registroNormalizado),
         });
     } catch (error) {
         console.error('Erro ao consultar presença:', error);
@@ -231,34 +294,50 @@ app.post('/api/presencas/:slug', async (req, res) => {
 
         const registros = data.registros;
         const registroExistente = registros.find((registro) => registro.uuid === aluno.uuid);
+        const agora = new Date().toISOString();
 
-        if (registroExistente) {
-            return res.json({
-                mensagem: 'Sua presença já havia sido confirmada anteriormente.',
-                presenca: {
-                    confirmado: true,
-                    confirmado_em: formatDate(registroExistente.confirmado_em),
-                },
+        if (!registroExistente) {
+            const novoRegistro = {
+                uuid: aluno.uuid,
+                nome: aluno.nome_completo,
+                matricula: aluno.matricula,
+                slug: aluno.slug,
+                entrada_confirmada_em: formatDate(agora),
+                saida_confirmada_em: null,
+            };
+
+            registros.push(novoRegistro);
+            await db.writeDB(data);
+
+            return res.status(201).json({
+                mensagem: 'Entrada registrada com sucesso! Aproveite o evento.',
+                presenca: buildPresencaStatus(novoRegistro),
             });
         }
 
-        const confirmadoEm = new Date().toISOString();
-        registros.push({
-            uuid: aluno.uuid,
-            nome: aluno.nome_completo,
-            matricula: aluno.matricula,
-            slug: aluno.slug,
-            confirmado_em: confirmadoEm,
-        });
+        if (!registroExistente.entrada_confirmada_em) {
+            registroExistente.entrada_confirmada_em = formatDate(agora);
+            await db.writeDB(data);
 
-        await db.writeDB(data);
+            return res.json({
+                mensagem: 'Entrada registrada com sucesso! Aproveite o evento.',
+                presenca: buildPresencaStatus(registroExistente),
+            });
+        }
 
-        res.status(201).json({
-            mensagem: 'Presença confirmada com sucesso! Aproveite o evento.',
-            presenca: {
-                confirmado: true,
-                confirmado_em: formatDate(confirmadoEm),
-            },
+        if (!registroExistente.saida_confirmada_em) {
+            registroExistente.saida_confirmada_em = formatDate(agora);
+            await db.writeDB(data);
+
+            return res.json({
+                mensagem: 'Saída registrada. Até a próxima!',
+                presenca: buildPresencaStatus(registroExistente),
+            });
+        }
+
+        return res.json({
+            mensagem: 'Sua entrada e saída já foram registradas.',
+            presenca: buildPresencaStatus(registroExistente),
         });
     } catch (error) {
         console.error('Erro ao registrar presença:', error);

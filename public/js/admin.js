@@ -62,15 +62,10 @@ function renderAlunos(list) {
     for (const aluno of list) {
         const row = rowTemplate.content.firstElementChild.cloneNode(true);
         const url = createLink(host, aluno.slug);
-        const presencaSpan = document.createElement('span');
-        presencaSpan.textContent = aluno.presenca.confirmado
-            ? `Confirmada em ${formatDate(aluno.presenca.confirmado_em)}`
-            : 'Pendente';
-        presencaSpan.classList.add(aluno.presenca.confirmado ? 'confirmada' : 'pendente');
-
         const nomeCell = row.querySelector('.nome');
         const matriculaCell = row.querySelector('.matricula');
-        const presencaCell = row.querySelector('.presenca');
+        const chegadaCell = row.querySelector('.entrada');
+        const saidaCell = row.querySelector('.saida');
         const linkWrapper = row.querySelector('.link');
         const linkAnchor = linkWrapper.querySelector('a');
         const copyButton = linkWrapper.querySelector('[data-action="copy"]');
@@ -79,8 +74,30 @@ function renderAlunos(list) {
 
         nomeCell.textContent = aluno.nome_completo;
         matriculaCell.textContent = aluno.matricula;
-        presencaCell.innerHTML = '';
-        presencaCell.appendChild(presencaSpan);
+        chegadaCell.innerHTML = '';
+        saidaCell.innerHTML = '';
+
+        const entradaBadge = document.createElement('span');
+        const saidaBadge = document.createElement('span');
+
+        entradaBadge.textContent = aluno.presenca.entrada.confirmado
+            ? formatDate(aluno.presenca.entrada.confirmado_em) || 'Registrada'
+            : 'Pendente';
+        entradaBadge.classList.add(
+            'status-badge',
+            aluno.presenca.entrada.confirmado ? 'confirmada' : 'pendente'
+        );
+
+        saidaBadge.textContent = aluno.presenca.saida.confirmado
+            ? formatDate(aluno.presenca.saida.confirmado_em) || 'Registrada'
+            : 'Pendente';
+        saidaBadge.classList.add(
+            'status-badge',
+            aluno.presenca.saida.confirmado ? 'confirmada' : 'pendente'
+        );
+
+        chegadaCell.appendChild(entradaBadge);
+        saidaCell.appendChild(saidaBadge);
 
         linkAnchor.textContent = 'Abrir link';
         linkAnchor.href = url;
@@ -100,13 +117,15 @@ function renderAlunos(list) {
         if (window.innerWidth <= 640) {
             nomeCell.dataset.label = 'Nome';
             matriculaCell.dataset.label = 'Matrícula';
-            presencaCell.dataset.label = 'Presença';
+            chegadaCell.dataset.label = 'Chegada';
+            saidaCell.dataset.label = 'Saída';
             linkWrapper.dataset.label = 'Link';
             qrWrapper.dataset.label = 'QR Code';
         } else {
             delete nomeCell.dataset.label;
             delete matriculaCell.dataset.label;
-            delete presencaCell.dataset.label;
+            delete chegadaCell.dataset.label;
+            delete saidaCell.dataset.label;
             delete linkWrapper.dataset.label;
             delete qrWrapper.dataset.label;
         }
