@@ -26,6 +26,12 @@ const adminAuth = basicAuth({
     realm: 'AdminPanel',
 });
 
+const scannerAuth = basicAuth({
+    users: { devlima: 'devlima' },
+    challenge: true,
+    realm: 'ScannerPanel',
+});
+
 const RESERVED_PATHS = new Set(['', 'api', 'css', 'js', 'images', 'favicon.ico', 'robots.txt', '404']);
 
 function getBaseUrl(req) {
@@ -85,45 +91,69 @@ function formatDuration(durationMs) {
 
 function buildResumoRelatorio(alunos, registros) {
     const totalAlunos = alunos.length;
-    let totalEntrada = 0;
-    let totalSaida = 0;
+    let totalEntradas = 0;
+    let totalSaidas = 0;
+    let alunosComEntrada = 0;
+    let alunosComSaida = 0;
+    let sessoesAbertas = 0;
     const permanenciasMs = [];
+    let permanenciaTotalMs = 0;
     let primeiraEntrada = null;
     let ultimaSaida = null;
 
     for (const registro of registros) {
-        if (registro.entrada_confirmada_em) {
-            totalEntrada += 1;
+        const sessoes = Array.isArray(registro.sessoes) ? registro.sessoes : [];
+        let possuiEntrada = false;
+        let possuiSaida = false;
 
-            const entradaDate = new Date(registro.entrada_confirmada_em);
-            if (!primeiraEntrada || entradaDate < primeiraEntrada) {
-                primeiraEntrada = entradaDate;
+        for (const sessao of sessoes) {
+            const entrada = sessao.entrada_confirmada_em || null;
+            const saida = sessao.saida_confirmada_em || null;
+
+            if (entrada) {
+                possuiEntrada = true;
+                totalEntradas += 1;
+
+                const entradaDate = new Date(entrada);
+                if (!primeiraEntrada || entradaDate < primeiraEntrada) {
+                    primeiraEntrada = entradaDate;
+                }
+            }
+
+            if (entrada && !saida) {
+                sessoesAbertas += 1;
+            }
+
+            if (saida) {
+                possuiSaida = true;
+                totalSaidas += 1;
+
+                const saidaDate = new Date(saida);
+                if (!ultimaSaida || saidaDate > ultimaSaida) {
+                    ultimaSaida = saidaDate;
+                }
+            }
+
+            const permanenciaMs = calcularDuracaoMs(entrada, saida);
+            if (permanenciaMs) {
+                permanenciasMs.push(permanenciaMs);
+                permanenciaTotalMs += permanenciaMs;
             }
         }
 
-        if (registro.saida_confirmada_em) {
-            totalSaida += 1;
-
-            const saidaDate = new Date(registro.saida_confirmada_em);
-            if (!ultimaSaida || saidaDate > ultimaSaida) {
-                ultimaSaida = saidaDate;
-            }
+        if (possuiEntrada) {
+            alunosComEntrada += 1;
         }
 
-        const permanenciaMs = calcularDuracaoMs(
-            registro.entrada_confirmada_em,
-            registro.saida_confirmada_em
-        );
-
-        if (permanenciaMs) {
-            permanenciasMs.push(permanenciaMs);
+        if (possuiSaida) {
+            alunosComSaida += 1;
         }
     }
 
-    const pendentes = Math.max(totalAlunos - totalEntrada, 0);
-    const apenasEntrada = Math.max(totalEntrada - totalSaida, 0);
-    const taxaEntrada = totalAlunos > 0 ? totalEntrada / totalAlunos : 0;
-    const taxaSaida = totalAlunos > 0 ? totalSaida / totalAlunos : 0;
+    const pendentes = Math.max(totalAlunos - alunosComEntrada, 0);
+    const apenasEntrada = Math.max(alunosComEntrada - alunosComSaida, 0);
+    const taxaEntrada = totalAlunos > 0 ? alunosComEntrada / totalAlunos : 0;
+    const taxaSaida = totalAlunos > 0 ? alunosComSaida / totalAlunos : 0;
 
     const mediaPermanenciaMs =
         permanenciasMs.length > 0
@@ -132,14 +162,19 @@ function buildResumoRelatorio(alunos, registros) {
 
     return {
         totalAlunos,
-        totalEntrada,
-        totalSaida,
+        totalEntradas,
+        totalSaidas,
+        alunosComEntrada,
+        alunosComSaida,
+        sessoesAbertas,
         pendentes,
         apenasEntrada,
         taxaEntrada,
         taxaSaida,
         mediaPermanenciaMs,
         mediaPermanenciaFormatada: formatDuration(mediaPermanenciaMs),
+        permanenciaTotalMs,
+        permanenciaTotalFormatada: formatDuration(permanenciaTotalMs),
         primeiraEntrada: primeiraEntrada ? primeiraEntrada.toISOString() : null,
         ultimaSaida: ultimaSaida ? ultimaSaida.toISOString() : null,
         geradoEm: new Date().toISOString(),
@@ -152,23 +187,22 @@ function buildRelatorioDados(alunos, registros, baseUrl) {
     const detalhes = alunos
         .map((aluno) => {
             const registro = registrosMap.get(aluno.uuid) ?? null;
-            const entrada = registro?.entrada_confirmada_em ?? null;
-            const saida = registro?.saida_confirmada_em ?? null;
-            const permanenciaMs = calcularDuracaoMs(entrada, saida);
+            const presenca = buildPresencaStatus(registro);
 
             return {
                 nome: aluno.nome_completo,
                 matricula: aluno.matricula,
                 slug: aluno.slug,
                 link: `${baseUrl}/${aluno.slug}`,
-                entrada,
-                saida,
-                permanenciaMs,
-                permanenciaFormatada: formatDuration(permanenciaMs),
-                entradaFormatada: formatDateTimeHuman(entrada),
-                saidaFormatada: formatDateTimeHuman(saida),
-                statusEntrada: Boolean(entrada),
-                statusSaida: Boolean(saida),
+                totalSessoes: presenca.totalSessoes,
+                totalEntradas: presenca.totalEntradas,
+                totalSaidas: presenca.totalSaidas,
+                ultimaEntrada: presenca.ultimaEntrada,
+                ultimaSaida: presenca.ultimaSaida,
+                permanenciaTotalMs: presenca.permanenciaTotalMs,
+                permanenciaTotalFormatada: formatDuration(presenca.permanenciaTotalMs),
+                ultimaEntradaFormatada: formatDateTimeHuman(presenca.ultimaEntrada),
+                ultimaSaidaFormatada: formatDateTimeHuman(presenca.ultimaSaida),
             };
         })
         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -190,20 +224,159 @@ function formatDate(isoString) {
     }
 }
 
-function normalizarRegistro(registro) {
-    const entrada = registro.entrada_confirmada_em || registro.confirmado_em || null;
-    const saida = registro.saida_confirmada_em || null;
+function normalizarSessao(sessao) {
+    if (!sessao || typeof sessao !== 'object') {
+        return null;
+    }
 
-    const normalizado = {
-        uuid: registro.uuid,
-        nome: registro.nome,
-        matricula: registro.matricula,
-        slug: registro.slug,
-        entrada_confirmada_em: entrada ? formatDate(entrada) : null,
-        saida_confirmada_em: saida ? formatDate(saida) : null,
+    const entrada = formatDate(
+        sessao.entrada_confirmada_em || sessao.entrada || sessao.confirmado_em || null
+    );
+    const saida = formatDate(sessao.saida_confirmada_em || sessao.saida || null);
+
+    if (!entrada && !saida) {
+        return null;
+    }
+
+    return {
+        entrada_confirmada_em: entrada,
+        saida_confirmada_em: saida,
     };
+}
 
-    return normalizado;
+function normalizarRegistro(registro) {
+    if (!registro || typeof registro !== 'object') {
+        return null;
+    }
+
+    const sessoes = [];
+
+    if (Array.isArray(registro.sessoes) && registro.sessoes.length > 0) {
+        for (const sessao of registro.sessoes) {
+            const normalizada = normalizarSessao(sessao);
+
+            if (normalizada) {
+                sessoes.push(normalizada);
+            }
+        }
+    } else {
+        const entrada = formatDate(registro.entrada_confirmada_em || registro.confirmado_em || null);
+        const saida = formatDate(registro.saida_confirmada_em || null);
+
+        if (entrada || saida) {
+            sessoes.push({
+                entrada_confirmada_em: entrada,
+                saida_confirmada_em: saida,
+            });
+        }
+    }
+
+    sessoes.sort((a, b) => {
+        const aTime = a.entrada_confirmada_em ? new Date(a.entrada_confirmada_em).getTime() : 0;
+        const bTime = b.entrada_confirmada_em ? new Date(b.entrada_confirmada_em).getTime() : 0;
+        return aTime - bTime;
+    });
+
+    return {
+        uuid: registro.uuid,
+        nome: registro.nome || registro.nome_completo || null,
+        matricula: registro.matricula || null,
+        slug: registro.slug,
+        sessoes,
+    };
+}
+
+function mapSessaoDetalhada(sessao, indice) {
+    const entrada = sessao?.entrada_confirmada_em || null;
+    const saida = sessao?.saida_confirmada_em || null;
+    const permanenciaMs = calcularDuracaoMs(entrada, saida);
+
+    return {
+        indice,
+        entrada: {
+            confirmado: Boolean(entrada),
+            confirmado_em: entrada,
+        },
+        saida: {
+            confirmado: Boolean(saida),
+            confirmado_em: saida,
+        },
+        permanenciaMs,
+        permanenciaFormatada: formatDuration(permanenciaMs),
+    };
+}
+
+function buildPresencaStatus(registro) {
+    const sessoesBrutas = Array.isArray(registro?.sessoes) ? registro.sessoes : [];
+    const sessoes = sessoesBrutas.map((sessao, index) => mapSessaoDetalhada(sessao, index + 1));
+
+    const ultimaEntrada = (() => {
+        for (let i = sessoes.length - 1; i >= 0; i -= 1) {
+            const entrada = sessoes[i].entrada.confirmado_em;
+            if (entrada) {
+                return entrada;
+            }
+        }
+        return null;
+    })();
+
+    const ultimaSaida = (() => {
+        for (let i = sessoes.length - 1; i >= 0; i -= 1) {
+            const saida = sessoes[i].saida.confirmado_em;
+            if (saida) {
+                return saida;
+            }
+        }
+        return null;
+    })();
+
+    const ultimaSessao = sessoes[sessoes.length - 1] ?? null;
+    const sessaoAberta = Boolean(
+        ultimaSessao && ultimaSessao.entrada.confirmado && !ultimaSessao.saida.confirmado
+    );
+    const proximaAcao = sessaoAberta ? 'saida' : 'entrada';
+
+    const totalEntradas = sessoes.reduce(
+        (acc, sessao) => acc + (sessao.entrada.confirmado ? 1 : 0),
+        0
+    );
+    const totalSaidas = sessoes.reduce((acc, sessao) => acc + (sessao.saida.confirmado ? 1 : 0), 0);
+    const permanenciaTotalMs = sessoes.reduce(
+        (acc, sessao) => acc + (Number.isFinite(sessao.permanenciaMs) ? sessao.permanenciaMs : 0),
+        0
+    );
+
+    const ultimaAtualizacao = (() => {
+        let maior = null;
+
+        for (const sessao of sessoes) {
+            const valores = [sessao.entrada.confirmado_em, sessao.saida.confirmado_em]
+                .filter(Boolean)
+                .map((valor) => new Date(valor));
+
+            for (const data of valores) {
+                if (!maior || data > maior) {
+                    maior = data;
+                }
+            }
+        }
+
+        return maior ? maior.toISOString() : null;
+    })();
+
+    return {
+        sessoes,
+        totalSessoes: sessoes.length,
+        totalEntradas,
+        totalSaidas,
+        sessaoAberta,
+        proximaAcao,
+        ultimaEntrada,
+        ultimaSaida,
+        ultimaAtualizacao,
+        permanenciaTotalMs,
+        permanenciaTotalFormatada: formatDuration(permanenciaTotalMs),
+    };
 }
 
 function buildAlunoResponse(aluno, registrosMap) {
@@ -215,29 +388,7 @@ function buildAlunoResponse(aluno, registrosMap) {
         nome_completo: aluno.nome_completo,
         matricula: aluno.matricula,
         criado_em: aluno.criado_em,
-        presenca: {
-            entrada: {
-                confirmado: Boolean(registro?.entrada_confirmada_em),
-                confirmado_em: registro?.entrada_confirmada_em ?? null,
-            },
-            saida: {
-                confirmado: Boolean(registro?.saida_confirmada_em),
-                confirmado_em: registro?.saida_confirmada_em ?? null,
-            },
-        },
-    };
-}
-
-function buildPresencaStatus(registro) {
-    return {
-        entrada: {
-            confirmado: Boolean(registro?.entrada_confirmada_em),
-            confirmado_em: registro?.entrada_confirmada_em ?? null,
-        },
-        saida: {
-            confirmado: Boolean(registro?.saida_confirmada_em),
-            confirmado_em: registro?.saida_confirmada_em ?? null,
-        },
+        presenca: buildPresencaStatus(registro),
     };
 }
 
@@ -274,32 +425,55 @@ async function readDatabase() {
         }
     }
 
-    const registrosNormalizados = registrosOriginais.map((registro) => {
-        const normalizado = normalizarRegistro(registro);
+    const registrosNormalizados = registrosOriginais
+        .map((registro) => {
+            const normalizado = normalizarRegistro(registro);
 
-        const entradaOriginal = formatDate(registro.entrada_confirmada_em ?? registro.confirmado_em ?? null);
-        const saidaOriginal = formatDate(registro.saida_confirmada_em ?? null);
-        const estruturaDiferente =
-            !Object.prototype.hasOwnProperty.call(registro, 'entrada_confirmada_em') ||
-            Object.prototype.hasOwnProperty.call(registro, 'confirmado_em') ||
-            !Object.prototype.hasOwnProperty.call(registro, 'saida_confirmada_em');
+            if (!normalizado) {
+                registrosAtualizados = true;
+                return null;
+            }
 
-        if (
-            normalizado.entrada_confirmada_em !== entradaOriginal ||
-            normalizado.saida_confirmada_em !== saidaOriginal ||
-            estruturaDiferente
-        ) {
-            registrosAtualizados = true;
-        }
+            const sessoesOriginais = Array.isArray(registro.sessoes)
+                ? registro.sessoes
+                : [
+                      {
+                          entrada_confirmada_em:
+                              registro.entrada_confirmada_em || registro.confirmado_em || null,
+                          saida_confirmada_em: registro.saida_confirmada_em || null,
+                      },
+                  ];
 
-        return normalizado;
-    });
+            const normalizadas = normalizado.sessoes;
 
-    if (registrosAtualizados) {
-        data.registros = registrosNormalizados;
-    } else {
-        data.registros = registrosOriginais.map((registro) => normalizarRegistro(registro));
-    }
+            const precisaAtualizar =
+                !Array.isArray(registro.sessoes) ||
+                sessoesOriginais.length !== normalizadas.length ||
+                normalizadas.some((sessao, index) => {
+                    const original = sessoesOriginais[index] || {};
+                    const entradaOriginal = formatDate(
+                        original.entrada_confirmada_em ||
+                            original.entrada ||
+                            original.confirmado_em ||
+                            null
+                    );
+                    const saidaOriginal = formatDate(original.saida_confirmada_em || original.saida || null);
+
+                    return (
+                        sessao.entrada_confirmada_em !== entradaOriginal ||
+                        sessao.saida_confirmada_em !== saidaOriginal
+                    );
+                });
+
+            if (precisaAtualizar) {
+                registrosAtualizados = true;
+            }
+
+            return normalizado;
+        })
+        .filter(Boolean);
+
+    data.registros = registrosNormalizados;
 
     if (shouldPersist || registrosAtualizados) {
         await db.writeDB(data);
@@ -316,7 +490,7 @@ app.get('/api/admin/alunos', adminAuth, async (req, res) => {
     try {
         const data = await readDatabase();
         const registrosMap = new Map(
-            data.registros.map((registro) => [registro.uuid, normalizarRegistro(registro)])
+            data.registros.map((registro) => [registro.uuid, registro])
         );
 
         const alunosOrdenados = [...data.alunos].sort((a, b) =>
@@ -411,9 +585,8 @@ app.get('/api/admin/qrcode/:slug', adminAuth, async (req, res) => {
 app.get('/api/admin/relatorios/excel', adminAuth, async (req, res) => {
     try {
         const data = await readDatabase();
-        const registrosNormalizados = data.registros.map((registro) => normalizarRegistro(registro));
         const baseUrl = getBaseUrl(req);
-        const relatorio = buildRelatorioDados(data.alunos, registrosNormalizados, baseUrl);
+        const relatorio = buildRelatorioDados(data.alunos, data.registros, baseUrl);
 
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Painel LAROI';
@@ -424,20 +597,37 @@ app.get('/api/admin/relatorios/excel', adminAuth, async (req, res) => {
         sheet.columns = [
             { header: 'Nome', key: 'nome', width: 32 },
             { header: 'Matrícula', key: 'matricula', width: 16 },
-            { header: 'Chegada', key: 'entrada', width: 20 },
-            { header: 'Saída', key: 'saida', width: 20 },
-            { header: 'Permanência', key: 'permanencia', width: 16 },
+            { header: 'Sessões', key: 'sessoes', width: 12 },
+            { header: 'Chegadas', key: 'entradas', width: 12 },
+            { header: 'Saídas', key: 'saidas', width: 12 },
+            { header: 'Última chegada', key: 'ultimaEntrada', width: 22 },
+            { header: 'Última saída', key: 'ultimaSaida', width: 22 },
+            { header: 'Permanência total', key: 'permanencia', width: 20 },
             { header: 'Link', key: 'link', width: 45 },
         ];
 
-        sheet.addRow(['Resumo do evento', '', '', '', '', '']);
+        sheet.addRow(['Resumo do evento', '', '', '', '', '', '', '', '']);
         sheet.addRow([
             'Total de alunos',
             relatorio.resumo.totalAlunos,
-            'Confirmaram chegada',
-            relatorio.resumo.totalEntrada,
-            'Confirmaram saída',
-            relatorio.resumo.totalSaida,
+            'Alunos com chegada',
+            relatorio.resumo.alunosComEntrada,
+            'Alunos com saída',
+            relatorio.resumo.alunosComSaida,
+            'Gerado em',
+            formatDateTimeHuman(relatorio.resumo.geradoEm),
+            '',
+        ]);
+        sheet.addRow([
+            'Total de entradas',
+            relatorio.resumo.totalEntradas,
+            'Total de saídas',
+            relatorio.resumo.totalSaidas,
+            'Sessões em andamento',
+            relatorio.resumo.sessoesAbertas,
+            'Permanência total',
+            relatorio.resumo.permanenciaTotalFormatada,
+            '',
         ]);
         sheet.addRow([
             'Pendentes',
@@ -446,21 +636,19 @@ app.get('/api/admin/relatorios/excel', adminAuth, async (req, res) => {
             relatorio.resumo.apenasEntrada,
             'Média de permanência',
             relatorio.resumo.mediaPermanenciaFormatada,
+            '',
+            '',
+            '',
         ]);
         sheet.addRow([
             'Taxa de presença',
             `${(relatorio.resumo.taxaEntrada * 100).toFixed(1)}%`,
             'Taxa de saída',
             `${(relatorio.resumo.taxaSaida * 100).toFixed(1)}%`,
-            'Gerado em',
-            formatDateTimeHuman(relatorio.resumo.geradoEm),
-        ]);
-        sheet.addRow([
             'Primeira chegada',
             formatDateTimeHuman(relatorio.resumo.primeiraEntrada),
             'Última saída',
             formatDateTimeHuman(relatorio.resumo.ultimaSaida),
-            '',
             '',
         ]);
         sheet.addRow([]);
@@ -472,16 +660,19 @@ app.get('/api/admin/relatorios/excel', adminAuth, async (req, res) => {
             sheet.addRow({
                 nome: detalhe.nome,
                 matricula: detalhe.matricula,
-                entrada: detalhe.entradaFormatada,
-                saida: detalhe.saidaFormatada,
-                permanencia: detalhe.permanenciaFormatada,
+                sessoes: detalhe.totalSessoes,
+                entradas: detalhe.totalEntradas,
+                saidas: detalhe.totalSaidas,
+                ultimaEntrada: detalhe.ultimaEntradaFormatada,
+                ultimaSaida: detalhe.ultimaSaidaFormatada,
+                permanencia: detalhe.permanenciaTotalFormatada,
                 link: detalhe.link,
             });
         }
 
         sheet.autoFilter = {
             from: { row: headerRow.number, column: 1 },
-            to: { row: headerRow.number + relatorio.detalhes.length, column: 6 },
+            to: { row: headerRow.number + relatorio.detalhes.length, column: 9 },
         };
 
         res.setHeader(
@@ -506,9 +697,8 @@ app.get('/api/admin/relatorios/excel', adminAuth, async (req, res) => {
 app.get('/api/admin/relatorios/pdf', adminAuth, async (req, res) => {
     try {
         const data = await readDatabase();
-        const registrosNormalizados = data.registros.map((registro) => normalizarRegistro(registro));
         const baseUrl = getBaseUrl(req);
-        const relatorio = buildRelatorioDados(data.alunos, registrosNormalizados, baseUrl);
+        const relatorio = buildRelatorioDados(data.alunos, data.registros, baseUrl);
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename="relatorio-simposio-laroi.pdf"');
@@ -527,13 +717,17 @@ app.get('/api/admin/relatorios/pdf', adminAuth, async (req, res) => {
 
         const resumoItens = [
             `Total de alunos: ${resumo.totalAlunos}`,
-            `Confirmaram chegada: ${resumo.totalEntrada}`,
-            `Confirmaram saída: ${resumo.totalSaida}`,
-            `Pendentes: ${resumo.pendentes}`,
+            `Alunos com chegada: ${resumo.alunosComEntrada}`,
+            `Alunos com saída: ${resumo.alunosComSaida}`,
+            `Entradas registradas: ${resumo.totalEntradas}`,
+            `Saídas registradas: ${resumo.totalSaidas}`,
+            `Sessões em andamento: ${resumo.sessoesAbertas}`,
+            `Pendentes (sem chegada): ${resumo.pendentes}`,
             `Somente chegada: ${resumo.apenasEntrada}`,
             `Taxa de presença: ${(resumo.taxaEntrada * 100).toFixed(1)}%`,
             `Taxa de saída: ${(resumo.taxaSaida * 100).toFixed(1)}%`,
-            `Média de permanência: ${resumo.mediaPermanenciaFormatada}`,
+            `Média de permanência por sessão: ${resumo.mediaPermanenciaFormatada}`,
+            `Permanência total acumulada: ${resumo.permanenciaTotalFormatada}`,
             `Primeira chegada registrada: ${formatDateTimeHuman(resumo.primeiraEntrada)}`,
             `Última saída registrada: ${formatDateTimeHuman(resumo.ultimaSaida)}`,
         ];
@@ -557,9 +751,12 @@ app.get('/api/admin/relatorios/pdf', adminAuth, async (req, res) => {
                 continued: false,
             });
             doc.fontSize(detalheFontSize);
-            doc.text(`Chegada: ${detalhe.entradaFormatada}`);
-            doc.text(`Saída: ${detalhe.saidaFormatada}`);
-            doc.text(`Permanência: ${detalhe.permanenciaFormatada}`);
+            doc.text(
+                `Sessões: ${detalhe.totalSessoes} · Chegadas: ${detalhe.totalEntradas} · Saídas: ${detalhe.totalSaidas}`
+            );
+            doc.text(`Última chegada: ${detalhe.ultimaEntradaFormatada}`);
+            doc.text(`Última saída: ${detalhe.ultimaSaidaFormatada}`);
+            doc.text(`Permanência total: ${detalhe.permanenciaTotalFormatada}`);
             doc.text(`Link: ${detalhe.link}`, { underline: true, link: detalhe.link });
 
             if (index < relatorio.detalhes.length - 1) {
@@ -583,6 +780,8 @@ app.get('/api/admin/relatorios/pdf', adminAuth, async (req, res) => {
     }
 });
 
+app.use('/api/presencas', scannerAuth);
+
 app.get('/api/presencas/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -593,14 +792,13 @@ app.get('/api/presencas/:slug', async (req, res) => {
             return res.status(404).json({ erro: 'QR Code inválido ou não encontrado.' });
         }
 
-        const registro = data.registros.find((item) => item.uuid === aluno.uuid) ?? null;
-        const registroNormalizado = registro ? normalizarRegistro(registro) : null;
-
         res.json({
             nome_completo: aluno.nome_completo,
             matricula: aluno.matricula,
             slug: aluno.slug,
-            presenca: buildPresencaStatus(registroNormalizado),
+            presenca: buildPresencaStatus(
+                data.registros.find((item) => item.uuid === aluno.uuid) ?? null
+            ),
         });
     } catch (error) {
         console.error('Erro ao consultar presença:', error);
@@ -618,52 +816,48 @@ app.post('/api/presencas/:slug', async (req, res) => {
             return res.status(404).json({ erro: 'QR Code inválido ou não encontrado.' });
         }
 
-        const registros = data.registros;
-        const registroExistente = registros.find((registro) => registro.uuid === aluno.uuid);
         const agora = new Date().toISOString();
+        const agoraFormatado = formatDate(agora);
+        const registros = data.registros;
+        let registro = registros.find((item) => item.uuid === aluno.uuid);
 
-        if (!registroExistente) {
-            const novoRegistro = {
+        if (!registro) {
+            registro = {
                 uuid: aluno.uuid,
                 nome: aluno.nome_completo,
                 matricula: aluno.matricula,
                 slug: aluno.slug,
-                entrada_confirmada_em: formatDate(agora),
-                saida_confirmada_em: null,
+                sessoes: [],
             };
 
-            registros.push(novoRegistro);
+            registros.push(registro);
+        } else if (!Array.isArray(registro.sessoes)) {
+            registro.sessoes = [];
+        }
+
+        const sessoes = registro.sessoes;
+        const ultimaSessao = sessoes[sessoes.length - 1];
+
+        if (!ultimaSessao || ultimaSessao.saida_confirmada_em) {
+            sessoes.push({
+                entrada_confirmada_em: agoraFormatado,
+                saida_confirmada_em: null,
+            });
+
             await db.writeDB(data);
 
             return res.status(201).json({
                 mensagem: 'Entrada registrada com sucesso! Aproveite o evento.',
-                presenca: buildPresencaStatus(novoRegistro),
+                presenca: buildPresencaStatus(registro),
             });
         }
 
-        if (!registroExistente.entrada_confirmada_em) {
-            registroExistente.entrada_confirmada_em = formatDate(agora);
-            await db.writeDB(data);
-
-            return res.json({
-                mensagem: 'Entrada registrada com sucesso! Aproveite o evento.',
-                presenca: buildPresencaStatus(registroExistente),
-            });
-        }
-
-        if (!registroExistente.saida_confirmada_em) {
-            registroExistente.saida_confirmada_em = formatDate(agora);
-            await db.writeDB(data);
-
-            return res.json({
-                mensagem: 'Saída registrada. Até a próxima!',
-                presenca: buildPresencaStatus(registroExistente),
-            });
-        }
+        ultimaSessao.saida_confirmada_em = agoraFormatado;
+        await db.writeDB(data);
 
         return res.json({
-            mensagem: 'Sua entrada e saída já foram registradas.',
-            presenca: buildPresencaStatus(registroExistente),
+            mensagem: 'Saída registrada. Até a próxima!',
+            presenca: buildPresencaStatus(registro),
         });
     } catch (error) {
         console.error('Erro ao registrar presença:', error);
@@ -690,7 +884,9 @@ app.get('/:slug', (req, res, next) => {
         return next();
     }
 
-    res.sendFile(path.join(__dirname, 'public', 'presenca.html'));
+    return scannerAuth(req, res, () => {
+        res.sendFile(path.join(__dirname, 'public', 'presenca.html'));
+    });
 });
 
 app.use((req, res) => {

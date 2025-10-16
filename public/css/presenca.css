@@ -110,6 +110,82 @@ h1 {
     color: #fecaca;
 }
 
+.historico {
+    text-align: left;
+    background: rgba(15, 23, 42, 0.55);
+    border-radius: 18px;
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    padding: 18px;
+    margin: 0 0 24px;
+}
+
+.historico h2 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    color: rgba(199, 210, 254, 0.85);
+}
+
+.lista-sessoes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sessao-item {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.sessao-item.aberta {
+    border-color: rgba(250, 204, 21, 0.28);
+}
+
+.sessao-item.finalizada {
+    border-color: rgba(34, 197, 94, 0.28);
+}
+
+.sessao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.sessao-indice {
+    font-weight: 600;
+    color: #c7d2fe;
+}
+
+.sessao-status {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.sessao-item.aberta .sessao-status {
+    color: #facc15;
+}
+
+.sessao-item.finalizada .sessao-status {
+    color: #bbf7d0;
+}
+
+.sessao-detalhes {
+    display: grid;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: rgba(226, 232, 240, 0.85);
+}
+
+.sessao-detalhes strong {
+    color: #f8fafc;
+}
+
 .botao {
     width: 100%;
     border: none;

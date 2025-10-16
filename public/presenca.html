@@ -26,14 +26,22 @@
                     <dd id="alunoMatricula">—</dd>
                 </div>
                 <div>
-                    <dt>Chegada</dt>
-                    <dd id="statusEntrada">—</dd>
+                    <dt>Sessões registradas</dt>
+                    <dd id="totalSessoes">0</dd>
                 </div>
                 <div>
-                    <dt>Saída</dt>
-                    <dd id="statusSaida">—</dd>
+                    <dt>Última chegada</dt>
+                    <dd id="ultimaEntrada">—</dd>
+                </div>
+                <div>
+                    <dt>Última saída</dt>
+                    <dd id="ultimaSaida">—</dd>
                 </div>
             </dl>
+            <section class="historico" id="historico" hidden>
+                <h2>Histórico de confirmações</h2>
+                <ul id="listaSessoes" class="lista-sessoes"></ul>
+            </section>
             <button type="button" id="confirmarPresenca" class="botao" hidden>Confirmar presença</button>
             <p id="feedback" class="feedback" role="status"></p>
         </section>

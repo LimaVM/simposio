@@ -65,6 +65,7 @@ function renderAlunos(list) {
         const url = createLink(host, aluno.slug);
         const nomeCell = row.querySelector('.nome');
         const matriculaCell = row.querySelector('.matricula');
+        const sessoesCell = row.querySelector('.sessoes');
         const chegadaCell = row.querySelector('.entrada');
         const saidaCell = row.querySelector('.saida');
         const linkWrapper = row.querySelector('.link');
@@ -75,30 +76,66 @@ function renderAlunos(list) {
 
         nomeCell.textContent = aluno.nome_completo;
         matriculaCell.textContent = aluno.matricula;
+        sessoesCell.innerHTML = '';
         chegadaCell.innerHTML = '';
         saidaCell.innerHTML = '';
 
-        const entradaBadge = document.createElement('span');
-        const saidaBadge = document.createElement('span');
+        const presenca = aluno.presenca ?? {};
+        const totalSessoes = presenca.totalSessoes ?? 0;
+        const totalEntradas = presenca.totalEntradas ?? 0;
+        const totalSaidas = presenca.totalSaidas ?? 0;
+        const sessoesEmAndamento = Math.max(totalEntradas - totalSaidas, 0);
 
-        entradaBadge.textContent = aluno.presenca.entrada.confirmado
-            ? formatDate(aluno.presenca.entrada.confirmado_em) || 'Registrada'
-            : 'Pendente';
+        const sessoesBadge = document.createElement('span');
+        sessoesBadge.classList.add('status-badge', totalSessoes > 0 ? 'confirmada' : 'pendente');
+        sessoesBadge.textContent = `${totalSessoes} sessão${totalSessoes === 1 ? '' : 's'}`;
+        sessoesCell.appendChild(sessoesBadge);
+
+        if (sessoesEmAndamento > 0) {
+            const andamentoBadge = document.createElement('span');
+            andamentoBadge.classList.add('status-chip', 'aberta');
+            andamentoBadge.textContent = `${sessoesEmAndamento} em andamento`;
+            sessoesCell.appendChild(andamentoBadge);
+        }
+
+        const entradaBadge = document.createElement('span');
         entradaBadge.classList.add(
             'status-badge',
-            aluno.presenca.entrada.confirmado ? 'confirmada' : 'pendente'
+            presenca.ultimaEntrada ? 'confirmada' : 'pendente'
         );
+        entradaBadge.textContent = formatDate(presenca.ultimaEntrada);
 
-        saidaBadge.textContent = aluno.presenca.saida.confirmado
-            ? formatDate(aluno.presenca.saida.confirmado_em) || 'Registrada'
-            : 'Pendente';
-        saidaBadge.classList.add(
-            'status-badge',
-            aluno.presenca.saida.confirmado ? 'confirmada' : 'pendente'
-        );
+        const entradaMeta = document.createElement('small');
+        entradaMeta.classList.add('status-meta');
+        entradaMeta.textContent = `${totalEntradas} chegada${totalEntradas === 1 ? '' : 's'}`;
 
-        chegadaCell.appendChild(entradaBadge);
-        saidaCell.appendChild(saidaBadge);
+        const entradaWrapper = document.createElement('div');
+        entradaWrapper.classList.add('status-block');
+        entradaWrapper.appendChild(entradaBadge);
+        entradaWrapper.appendChild(entradaMeta);
+
+        const saidaBadge = document.createElement('span');
+        saidaBadge.classList.add('status-badge', presenca.ultimaSaida ? 'confirmada' : 'pendente');
+        saidaBadge.textContent = formatDate(presenca.ultimaSaida);
+
+        const saidaMeta = document.createElement('small');
+        saidaMeta.classList.add('status-meta');
+        saidaMeta.textContent = `${totalSaidas} saída${totalSaidas === 1 ? '' : 's'}`;
+
+        const saidaWrapper = document.createElement('div');
+        saidaWrapper.classList.add('status-block');
+        saidaWrapper.appendChild(saidaBadge);
+        saidaWrapper.appendChild(saidaMeta);
+
+        if (presenca.sessaoAberta) {
+            const alertaSaida = document.createElement('small');
+            alertaSaida.classList.add('status-meta', 'alerta');
+            alertaSaida.textContent = 'Aguardando saída';
+            saidaWrapper.appendChild(alertaSaida);
+        }
+
+        chegadaCell.appendChild(entradaWrapper);
+        saidaCell.appendChild(saidaWrapper);
 
         linkAnchor.textContent = 'Abrir link';
         linkAnchor.href = url;
@@ -118,6 +155,7 @@ function renderAlunos(list) {
         if (window.innerWidth <= 640) {
             nomeCell.dataset.label = 'Nome';
             matriculaCell.dataset.label = 'Matrícula';
+            sessoesCell.dataset.label = 'Sessões';
             chegadaCell.dataset.label = 'Chegada';
             saidaCell.dataset.label = 'Saída';
             linkWrapper.dataset.label = 'Link';
@@ -125,6 +163,7 @@ function renderAlunos(list) {
         } else {
             delete nomeCell.dataset.label;
             delete matriculaCell.dataset.label;
+            delete sessoesCell.dataset.label;
             delete chegadaCell.dataset.label;
             delete saidaCell.dataset.label;
             delete linkWrapper.dataset.label;
