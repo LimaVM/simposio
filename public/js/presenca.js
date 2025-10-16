@@ -46,7 +46,7 @@ function atualizarStatus(presenca, { ocultarSaida = false } = {}) {
         botaoConfirmar.textContent = 'Confirmar chegada';
         titulo.textContent = 'Confirme sua presença';
         descricao.textContent =
-            'Confira seus dados e finalize a confirmação para aproveitar todas as experiências do simpósio.';
+            'Confira seus dados e finalize a confirmação para aproveitar todas as experiências do 1º Simpósio LAROI 2025.';
     } else if (!saidaConfirmada) {
         if (ocultarSaida) {
             botaoConfirmar.hidden = true;
@@ -57,12 +57,13 @@ function atualizarStatus(presenca, { ocultarSaida = false } = {}) {
             botaoConfirmar.disabled = false;
             botaoConfirmar.textContent = 'Confirmar saída';
             titulo.textContent = 'Tudo pronto para encerrar o dia?';
-            descricao.textContent = 'Registre sua saída para concluirmos sua participação no evento.';
+            descricao.textContent = 'Registre sua saída para concluirmos sua participação no 1º Simpósio LAROI 2025.';
         }
     } else {
         botaoConfirmar.hidden = true;
         titulo.textContent = 'Participação registrada';
-        descricao.textContent = 'Sua chegada e saída foram confirmadas. Obrigado por participar!';
+        descricao.textContent =
+            'Sua chegada e saída foram confirmadas. Obrigado por participar do 1º Simpósio LAROI 2025!';
     }
 }
 
