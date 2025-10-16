@@ -23,7 +23,7 @@ function formatarData(iso) {
     }
 }
 
-function atualizarStatus(presenca) {
+function atualizarStatus(presenca, { ocultarSaida = false } = {}) {
     const entradaConfirmada = presenca?.entrada?.confirmado ?? false;
     const saidaConfirmada = presenca?.saida?.confirmado ?? false;
 
@@ -48,11 +48,17 @@ function atualizarStatus(presenca) {
         descricao.textContent =
             'Confira seus dados e finalize a confirmação para aproveitar todas as experiências do simpósio.';
     } else if (!saidaConfirmada) {
-        botaoConfirmar.hidden = false;
-        botaoConfirmar.disabled = false;
-        botaoConfirmar.textContent = 'Confirmar saída';
-        titulo.textContent = 'Tudo pronto para encerrar o dia?';
-        descricao.textContent = 'Registre sua saída para concluirmos sua participação no evento.';
+        if (ocultarSaida) {
+            botaoConfirmar.hidden = true;
+            titulo.textContent = 'Chegada confirmada';
+            descricao.textContent = 'Tudo certo! Ao sair, escaneie o mesmo QR Code para registrar sua saída.';
+        } else {
+            botaoConfirmar.hidden = false;
+            botaoConfirmar.disabled = false;
+            botaoConfirmar.textContent = 'Confirmar saída';
+            titulo.textContent = 'Tudo pronto para encerrar o dia?';
+            descricao.textContent = 'Registre sua saída para concluirmos sua participação no evento.';
+        }
     } else {
         botaoConfirmar.hidden = true;
         titulo.textContent = 'Participação registrada';
@@ -120,8 +126,19 @@ botaoConfirmar.addEventListener('click', async () => {
             return;
         }
 
-        atualizarStatus(dados.presenca);
-        exibirFeedback('sucesso', dados.mensagem || 'Confirmação registrada com sucesso!');
+        const registrandoSaida = acaoAtual === 'saída';
+        atualizarStatus(dados.presenca, { ocultarSaida: !registrandoSaida });
+
+        const mensagemSucesso = dados.mensagem
+            || (registrandoSaida
+                ? 'Saída confirmada com sucesso!'
+                : 'Chegada confirmada! Escaneie novamente o QR Code ao sair para registrar a saída.');
+
+        exibirFeedback('sucesso', mensagemSucesso);
+
+        if (registrandoSaida) {
+            botaoConfirmar.disabled = false;
+        }
     } catch (error) {
         console.error(error);
         exibirFeedback('erro', `Não foi possível registrar sua ${acaoAtual} agora.`);
