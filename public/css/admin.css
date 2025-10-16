@@ -197,6 +197,21 @@ input[type='search']:focus {
     align-items: flex-end;
 }
 
+.panel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.exports {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
 .search input {
     min-width: min(320px, 100%);
 }
@@ -231,7 +246,8 @@ tbody tr:hover {
 }
 
 .button,
-.copy {
+.copy,
+.export {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -247,8 +263,13 @@ tbody tr:hover {
     text-decoration: none;
 }
 
+.export {
+    background: rgba(30, 41, 59, 0.65);
+}
+
 .button:hover,
-.copy:hover {
+.copy:hover,
+.export:hover {
     background: rgba(79, 70, 229, 0.22);
     transform: translateY(-1px);
 }
@@ -323,8 +344,23 @@ tbody tr:hover {
         align-items: stretch;
     }
 
+    .panel-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+
     .search input {
         min-width: 100%;
+    }
+
+    .exports {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .export {
+        flex: 1 1 auto;
     }
 
     table,

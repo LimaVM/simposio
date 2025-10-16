@@ -50,9 +50,15 @@
                         Cada aluno possui um link único. Compartilhe o QR Code ou o endereço direto.
                     </p>
                 </div>
-                <div class="search">
-                    <label for="buscar" class="sr-only">Filtrar alunos</label>
-                    <input id="buscar" type="search" placeholder="Buscar por nome ou matrícula" autocomplete="off" />
+                <div class="panel-actions">
+                    <div class="search">
+                        <label for="buscar" class="sr-only">Filtrar alunos</label>
+                        <input id="buscar" type="search" placeholder="Buscar por nome ou matrícula" autocomplete="off" />
+                    </div>
+                    <div class="exports" role="group" aria-label="Exportar relatórios">
+                        <button type="button" class="export" data-export="pdf">Baixar PDF</button>
+                        <button type="button" class="export" data-export="excel">Baixar Excel</button>
+                    </div>
                 </div>
             </header>
             <div class="table-wrapper">

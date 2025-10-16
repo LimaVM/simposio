@@ -5,6 +5,7 @@ const alertBox = document.querySelector('.alert');
 const registerForm = document.querySelector('#registerForm');
 const searchInput = document.querySelector('#buscar');
 const refreshButton = document.querySelector('#refreshButton');
+const exportButtons = document.querySelectorAll('[data-export]');
 
 let alunosCache = [];
 
@@ -223,6 +224,56 @@ searchInput.addEventListener('input', (event) => {
 refreshButton.addEventListener('click', () => {
     carregarAlunos();
     showAlert(null, 'Lista atualizada.');
+});
+
+async function downloadRelatorio(formato) {
+    const endpoints = {
+        pdf: '/api/admin/relatorios/pdf',
+        excel: '/api/admin/relatorios/excel',
+    };
+
+    const nomesArquivos = {
+        pdf: 'relatorio-simposio-laroi.pdf',
+        excel: 'relatorio-simposio-laroi.xlsx',
+    };
+
+    const endpoint = endpoints[formato];
+
+    if (!endpoint) {
+        showAlert('error', 'Formato de relatório inválido.');
+        return;
+    }
+
+    try {
+        const resposta = await fetch(endpoint, {
+            headers: { Accept: formato === 'pdf' ? 'application/pdf' : '*/*' },
+        });
+
+        if (!resposta.ok) {
+            throw new Error('Falha ao gerar relatório');
+        }
+
+        const blob = await resposta.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = nomesArquivos[formato] || `relatorio.${formato}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        showAlert('success', 'Relatório exportado com sucesso.');
+    } catch (error) {
+        console.error(error);
+        showAlert('error', 'Não foi possível gerar o relatório agora.');
+    }
+}
+
+exportButtons.forEach((botao) => {
+    botao.addEventListener('click', () => {
+        const formato = botao.dataset.export;
+        downloadRelatorio(formato);
+    });
 });
 
 window.addEventListener('resize', () => {
