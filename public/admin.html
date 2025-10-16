@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel do Simpósio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+    <div class="background"></div>
+    <header class="topbar">
+        <div class="branding">
+            <span class="logo" aria-hidden="true">🎓</span>
+            <div>
+                <h1>Simpósio .Admin</h1>
+                <p>Gerencie convites e presenças de forma simples.</p>
+            </div>
+        </div>
+        <button type="button" class="refresh" id="refreshButton" aria-label="Atualizar lista">
+            ↻ Atualizar
+        </button>
+    </header>
+
+    <main class="content" aria-live="polite">
+        <section class="panel">
+            <h2>Novo convidado</h2>
+            <p class="subtitle">Cadastre um participante para gerar um link exclusivo.</p>
+            <form id="registerForm" novalidate>
+                <div class="field">
+                    <label for="nome">Nome completo</label>
+                    <input id="nome" name="nome" type="text" placeholder="Maria Silva" autocomplete="name" required />
+                </div>
+                <div class="field">
+                    <label for="matricula">Matrícula</label>
+                    <input id="matricula" name="matricula" type="text" placeholder="20241234" autocomplete="off" required />
+                </div>
+                <button type="submit" class="primary">Cadastrar aluno</button>
+            </form>
+            <div class="alert" role="status" hidden></div>
+        </section>
+
+        <section class="panel">
+            <header class="panel-header">
+                <div>
+                    <h2>Convites gerados</h2>
+                    <p class="subtitle">
+                        Cada aluno possui um link único. Compartilhe o QR Code ou o endereço direto.
+                    </p>
+                </div>
+                <div class="search">
+                    <label for="buscar" class="sr-only">Filtrar alunos</label>
+                    <input id="buscar" type="search" placeholder="Buscar por nome ou matrícula" autocomplete="off" />
+                </div>
+            </header>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Matrícula</th>
+                            <th>Chegada</th>
+                            <th>Saída</th>
+                            <th>Link</th>
+                            <th>QR Code</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alunosTable"></tbody>
+                </table>
+                <p class="empty" id="emptyState" hidden>Nenhum aluno cadastrado até o momento.</p>
+            </div>
+        </section>
+    </main>
+
+    <template id="alunoRow">
+        <tr>
+            <td class="nome"></td>
+            <td class="matricula"></td>
+            <td class="entrada"></td>
+            <td class="saida"></td>
+            <td class="link">
+                <a class="button" target="_blank" rel="noopener"></a>
+                <button type="button" class="copy" data-action="copy">Copiar</button>
+            </td>
+            <td class="qrcode">
+                <a class="button secondary" download>Baixar</a>
+            </td>
+        </tr>
+    </template>
+
+    <script src="/js/admin.js" type="module"></script>
+</body>
+</html>
