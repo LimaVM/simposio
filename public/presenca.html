@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1º Simpósio LAROI 2025 · Confirmação de Presença</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/presenca.css" />
+</head>
+<body>
+    <div class="halo" aria-hidden="true"></div>
+    <main class="container" aria-live="polite">
+        <section class="card">
+            <div class="badge" aria-hidden="true">1º Simpósio LAROI 2025</div>
+            <h1 id="titulo">Bem-vindo!</h1>
+            <p id="descricao" class="descricao">Estamos validando seu acesso. Aguarde um instante…</p>
+            <dl class="detalhes" hidden>
+                <div>
+                    <dt>Nome</dt>
+                    <dd id="alunoNome">—</dd>
+                </div>
+                <div>
+                    <dt>Matrícula</dt>
+                    <dd id="alunoMatricula">—</dd>
+                </div>
+                <div>
+                    <dt>Sessões registradas</dt>
+                    <dd id="totalSessoes">0</dd>
+                </div>
+                <div>
+                    <dt>Última chegada</dt>
+                    <dd id="ultimaEntrada">—</dd>
+                </div>
+                <div>
+                    <dt>Última saída</dt>
+                    <dd id="ultimaSaida">—</dd>
+                </div>
+            </dl>
+            <section class="historico" id="historico" hidden>
+                <h2>Histórico de confirmações</h2>
+                <ul id="listaSessoes" class="lista-sessoes"></ul>
+            </section>
+            <button type="button" id="confirmarPresenca" class="botao" hidden>Confirmar presença</button>
+            <p id="feedback" class="feedback" role="status"></p>
+        </section>
+    </main>
+
+    <script src="/js/presenca.js" type="module"></script>
+</body>
+</html>
